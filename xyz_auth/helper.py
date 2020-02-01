@@ -93,6 +93,8 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
     # print rld, relation_lookups
     if rld:
         qset = qset.filter(**rld)
+    if user.is_superuser:
+        return qset
     lookup_link = None
     for r in [r.name for r in get_user_roles()]:
         if r not in scope_map or not hasattr(user, r):
@@ -170,6 +172,8 @@ def get_user_model_permissions(user, scope_map=USER_ROLE_MODEL_MAP):
     from xyz_restful.helper import get_model_actions
     res = {}
     mds = get_model_actions()
+    if user.is_superuser:
+        return mds
     for r in [a.name for a in get_user_roles()]:
         if r not in scope_map or not hasattr(user, r):
             continue
