@@ -68,4 +68,4 @@ if USING_JWTA:
         url(r'^token/$', token_obtain_pair, name='token_obtain_pair'),
         url(r'^token/refresh/$', token_refresh, name='token_refresh')
     ]
-    register_urlpatterns(__package__, urlpatterns)
+    register_urlpatterns('auth', urlpatterns)
