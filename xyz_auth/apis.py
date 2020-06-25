@@ -50,7 +50,7 @@ class UserViewSet(viewsets.GenericViewSet):
     def logout(self, request):
         from django.contrib.auth import logout
         logout(request)
-        return response.Response(status=status.HTTP_200_OK)
+        return response.Response('退出成功', status=status.HTTP_200_OK)
 
     @decorators.list_route(['get'], permission_classes=[permissions.IsAuthenticated])
     def stat(self, request):

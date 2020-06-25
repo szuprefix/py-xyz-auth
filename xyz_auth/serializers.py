@@ -25,11 +25,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super(UserSerializer, self).to_representation(instance)
-        from .helper import gen_permissions_map, get_user_model_permissions
-        rep['permissions_map'] = gen_permissions_map(rep['permissions'])
+        # from .helper import gen_permissions_map
+        # rep['permissions_map'] = gen_permissions_map(rep['permissions'])
+        from . import get_user_model_permissions
         rep['model_permissions'] = get_user_model_permissions(self.instance)
         return rep
-
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True, allow_blank=False, max_length=100)

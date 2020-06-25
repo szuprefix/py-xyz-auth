@@ -19,3 +19,9 @@ class TempTokenBackend(ModelBackend):
         if user:
             setattr(user, 'login_type', 'temptoken')
         return user
+
+
+class RolePermissionBackend(object):
+    def get_permissions(self, user):
+        from .helper import get_user_model_permissions
+        return get_user_model_permissions(user)
