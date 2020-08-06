@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from xyz_util import statutils
 
 def stats_login(qset=None, measures=None, period=None):
-    from django_szuprefix.common.models import Event
+    from xyz_common.models import Event
     qset = qset if qset is not None else Event.objects.filter(name__startswith='login')
     qset = statutils.using_stats_db(qset)
     dstat = statutils.DateStat(qset, 'create_time')

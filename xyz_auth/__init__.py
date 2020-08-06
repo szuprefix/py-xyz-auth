@@ -31,4 +31,4 @@ def get_user_model_permissions(user):
     for backend, backend_path in _get_backends(return_tuples=True):
         d = backend.get_permissions(user)
         if d:
-            re
+            return d
