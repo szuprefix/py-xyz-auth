@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*- 
 # author = 'denishuang'
 from __future__ import unicode_literals
-from django.conf import settings
 from xyz_util import modelutils
 from rest_framework.exceptions import PermissionDenied
 from django.apps.registry import apps
@@ -11,8 +10,11 @@ from django.contrib.auth.models import User
 from django.utils import translation
 from django.db.models import OneToOneField
 from django.db.models import OneToOneRel
-
 from xyz_restful.helper import router
+
+from django.conf import settings
+import logging
+log = logging.getLogger('django')
 
 def gen_permissions_map(permissions):
     m = {}
@@ -149,10 +151,11 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
     if lookup_link:
         qset = qset.filter(lookup_link)
         try:
-            m._meta.get_field('is_active')
-            qset = qset.filter(is_active=True)
+            if [f for f in m._meta.fields if f.name == 'is_active']:
+                qset = qset.filter(is_active=True)
         except:
-            pass
+            import traceback
+            log.error('filter_query_set_for_user %s:%s error. %s', mn, lookup_link, traceback.format_exc())
         return qset.distinct()
     return qset.none()
 
@@ -161,7 +164,8 @@ def user_has_model_permission(model, user, action):
     from django.db.models import QuerySet
     if isinstance(model, QuerySet):
         model = model.model
-    mn = model._meta.label_lower
+    meta = model._meta
+    mn = hasattr(model, 'alias') and meta.app_label + '.' + model.alias.lower() or meta.label_lower
     from . import get_user_model_permissions
     ump = get_user_model_permissions(user)
     if not ump:

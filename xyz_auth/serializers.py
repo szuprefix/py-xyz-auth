@@ -17,11 +17,11 @@ class GroupSerializer(IDAndStrFieldSerializerMixin, serializers.ModelSerializer)
 
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="get_full_name")
-    permissions = serializers.ListField(source="get_all_permissions")
+    # permissions = serializers.ListField(source="get_all_permissions")
 
     class Meta:
         model = models.User
-        fields = ('id', 'username', 'name', 'email', 'groups', 'permissions')
+        fields = ('id', 'username', 'name', 'email', 'groups')
 
     def to_representation(self, instance):
         rep = super(UserSerializer, self).to_representation(instance)
@@ -38,7 +38,9 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         user = authenticate(**attrs)
         if not user:
-            raise serializers.ValidationError("帐号或者密码不正确")
+            raise serializers.ValidationError("帐号或者密码不正确。")
+        if not user.is_active:
+            raise serializers.ValidationError("此帐号已被停用。")
         self.user = user
         return attrs
 
@@ -62,7 +64,7 @@ class PasswordChangeSerializer(serializers.Serializer):
         )
 
         if all(invalid_password_conditions):
-            raise serializers.ValidationError('密码不正确')
+            raise serializers.ValidationError('密码不正确。')
         return value
 
     def validate(self, attrs):

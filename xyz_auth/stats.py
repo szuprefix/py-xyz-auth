@@ -3,13 +3,14 @@
 from __future__ import unicode_literals
 from xyz_util import statutils
 
+
 def stats_login(qset=None, measures=None, period=None):
     from xyz_common.models import Event
     qset = qset if qset is not None else Event.objects.filter(name__startswith='login')
     qset = statutils.using_stats_db(qset)
     dstat = statutils.DateStat(qset, 'create_time')
-    gm = {'login.wechat.mp.qrcode': '微信扫码', 'login.wechat.mp': '微信', 'login.mobile': '手机号', 'login': '普通',
-         'login.temptoken': '临时密码'}
+    gm = {'login.wechat.mp.qrcode': u'电脑扫码', 'login.wechat.mp': u'微信公号', 'login.mobile': u'手机号', 'login': u'帐号密码',
+          'login.temptoken': u'临时密码'}
     funcs = {
         'today': lambda: dstat.stat("今天", count_field="object_id", distinct=True, only_first=True),
         'yesterday': lambda: dstat.stat("昨天", count_field="object_id", distinct=True, only_first=True),
