@@ -223,6 +223,8 @@ def find_user_ids_by_tag(tag):
         mvn = ps2[0]
         if len(ps2) == 2:
             fvn = ps2[1]
+    if mvn == '用户' and fvn == 'id':
+        return [int(a) for a in lookup_values.split(',')]
     ms = modelutils.get_model_verbose_name_map().get(mvn)
     model = ms and ms[0]
     if not model:
