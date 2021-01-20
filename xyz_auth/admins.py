@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as OldUserAdmin
 from django.contrib.auth.models import User
+from . import models
 
 
 class UserAdmin(OldUserAdmin):
@@ -23,3 +24,9 @@ class UserAdmin(OldUserAdmin):
 def add_tmp_token_to_user_admin():
     admin.site.unregister(User)
     admin.site.register(User, UserAdmin)
+
+
+@admin.register(models.Authority)
+class AuthorityAdmin(admin.ModelAdmin):
+    list_display = ('user', 'user_name', 'create_time', 'modify_time')
+    raw_id_fields = ('user',)

@@ -251,3 +251,4 @@ def find_user_ids_by_tag(tag):
             lookup = {}
             lookup['%s__in' % f.name] = list(qset.values_list('id', flat=True))
             return rmodel.objects.filter(**lookup).values_list('user_id', flat=True)
+    return qset.values_list('user_id', flat=True)
