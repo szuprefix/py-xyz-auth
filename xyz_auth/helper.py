@@ -14,7 +14,9 @@ from xyz_restful.helper import router
 
 from django.conf import settings
 import logging
+
 log = logging.getLogger('django')
+
 
 def gen_permissions_map(permissions):
     m = {}
@@ -187,6 +189,7 @@ def user_has_model_permission(model, user, action):
     #     if action in d2.get('actions', []) + d2.get('batch_actions', []):
     #         return True
 
+
 def extract_actions(d, mds):
     res = {}
     for mn, conf in d.iteritems():
@@ -197,6 +200,7 @@ def extract_actions(d, mds):
             acs = conf.get('actions', []) + ['batch_%s' % b for b in conf.get('batch_actions', [])]
             res[mn].update(acs)
     return res
+
 
 def get_user_model_permissions(user, scope_map=USER_ROLE_MODEL_MAP):
     from xyz_restful.helper import get_model_actions
@@ -252,3 +256,16 @@ def find_user_ids_by_tag(tag):
             lookup['%s__in' % f.name] = list(qset.values_list('id', flat=True))
             return rmodel.objects.filter(**lookup).values_list('user_id', flat=True)
     return qset.values_list('user_id', flat=True)
+
+
+def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
+    r = {}
+    for role_name, pm in scope_map.iteritems():
+        for appmodel, setting in pm.iteritems():
+            if appmodel == '@all':
+                continue
+            app_label, model_name = appmodel.split('.')
+            am = r.setdefault(app_label, {})
+            mm = am.setdefault(model_name, {})
+            mm[role_name] = setting.get('scope', {})
+    return r
