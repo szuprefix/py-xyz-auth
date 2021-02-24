@@ -28,9 +28,9 @@ class UserResourceFilter(BaseFilterBackend):
         from .helper import filter_query_set_for_user
         user = request.user
         rld = self.gen_relation_lookup_from_request(request)
-        pms = request.query_params
-        # mn = pms.get('relation_model_name')
-        qset = filter_query_set_for_user(queryset, user, relation_lookups=rld, relation_limit=pms.get('relation_limit'))
+        from .helper import get_relation_limit
+        relation_limit = get_relation_limit(request, queryset)
+        qset = filter_query_set_for_user(queryset, user, relation_lookups=rld, relation_limit=relation_limit)
         # if mn:
         #     model = apps.get_model(mn)
         #     from xyz_util.modelutils import get_generic_foreign_key, distinct

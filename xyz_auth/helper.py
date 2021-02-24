@@ -11,78 +11,79 @@ from django.utils import translation
 from django.db.models import OneToOneField
 from django.db.models import OneToOneRel
 from xyz_restful.helper import router
+from django.contrib.contenttypes.models import ContentType
 
 from django.conf import settings
 import logging
 
 log = logging.getLogger('django')
 
-
-def gen_permissions_map(permissions):
-    m = {}
-    for p in permissions:
-        app, pn = p.split('.')
-        fs = pn.split('_')
-        model = fs[-1]
-        action = '_'.join(fs[:-1])
-        am = m.setdefault(app, {})
-        mm = am.setdefault(model, {})
-        mm[action] = 1
-    return m
-
-
-def gen_default_permissions():
-    d = {}
-    for a, b, c in router.registry:
-        ps = a.split('/')
-        aname = ps[0]
-        mname = ps[1]
-        c = apps.app_configs[aname]
-        d.setdefault(ps[0], {'name': aname, 'label': c.verbose_name, 'models': []})
-        try:
-            mc = c.get_model(mname)
-        except:
-            continue
-        m = {'name': mname, 'label': mc._meta.verbose_name, 'scope': []}
-        gfk = modelutils.get_generic_foreign_key(mc._meta)
-        if gfk:
-            m['generic'] = [gfk.name, gfk.ct_field, gfk.fk_field]
-        d[aname]['models'].append(m)
-    return d
-
-
-def role_object_to_user(role_obj):
-    for f in role_obj._meta.get_fields():
-        if isinstance(f, OneToOneField) and f.related_model == User:
-            return getattr(role_obj, f.name)
+#
+# def gen_permissions_map(permissions):
+#     m = {}
+#     for p in permissions:
+#         app, pn = p.split('.')
+#         fs = pn.split('_')
+#         model = fs[-1]
+#         action = '_'.join(fs[:-1])
+#         am = m.setdefault(app, {})
+#         mm = am.setdefault(model, {})
+#         mm[action] = 1
+#     return m
+#
+#
+# def gen_default_permissions():
+#     d = {}
+#     for a, b, c in router.registry:
+#         ps = a.split('/')
+#         aname = ps[0]
+#         mname = ps[1]
+#         c = apps.app_configs[aname]
+#         d.setdefault(ps[0], {'name': aname, 'label': c.verbose_name, 'models': []})
+#         try:
+#             mc = c.get_model(mname)
+#         except:
+#             continue
+#         m = {'name': mname, 'label': mc._meta.verbose_name, 'scope': []}
+#         gfk = modelutils.get_generic_foreign_key(mc._meta)
+#         if gfk:
+#             m['generic'] = [gfk.name, gfk.ct_field, gfk.fk_field]
+#         d[aname]['models'].append(m)
+#     return d
 
 
-def get_user_roles():
+# def role_object_to_user(role_obj):
+#     for f in role_obj._meta.get_fields():
+#         if isinstance(f, OneToOneField) and f.related_model == User:
+#             return getattr(role_obj, f.name)
+
+
+def get_roles():
     return [f for f in User._meta.get_fields() if isinstance(f, OneToOneRel) and f.name.startswith('as_')]
 
-
-def get_user_resources():
-    pm = gen_default_permissions()
-    roles = [(r.name, r.related_model._meta.verbose_name, r.related_model) for r in get_user_roles()]
-    roles.append(('self', User._meta.verbose_name, User))
-    res = {}
-    for an, a in pm.iteritems():
-        for m in a['models']:
-            am = an + '.' + m['name']
-            for rn, rvn, r in roles:
-                lks = modelutils.get_relations(r, am)
-                if not lks:
-                    continue
-                res[am] = dict(
-                    relation=rn,
-                    relation_verbose_name=rvn,
-                    fields=[
-                        (f.name,
-                         modelutils.get_field_verbose_name(f),
-                         f) for f in lks
-                    ]
-                )
-    return res
+#
+# def get_user_resources():
+#     pm = gen_default_permissions()
+#     roles = [(r.name, r.related_model._meta.verbose_name, r.related_model) for r in get_roles()]
+#     roles.append(('self', User._meta.verbose_name, User))
+#     res = {}
+#     for an, a in pm.iteritems():
+#         for m in a['models']:
+#             am = an + '.' + m['name']
+#             for rn, rvn, r in roles:
+#                 lks = modelutils.get_relations(r, am)
+#                 if not lks:
+#                     continue
+#                 res[am] = dict(
+#                     relation=rn,
+#                     relation_verbose_name=rvn,
+#                     fields=[
+#                         (f.name,
+#                          modelutils.get_field_verbose_name(f),
+#                          f) for f in lks
+#                     ]
+#                 )
+#     return res
 
 
 USER_ROLE_MODEL_MAP = getattr(settings, 'USER_ROLE_MODEL_MAP', {})
@@ -102,7 +103,7 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
     if rld:
         qset = qset.filter(**rld)
     lookup_link = None
-    for r in [r.name for r in get_user_roles()]:
+    for r in [r.name for r in get_roles()]:
         if r not in scope_map or not hasattr(user, r):
             continue
 
@@ -174,7 +175,7 @@ def user_has_model_permission(model, user, action):
         return False
     ps = ump.get(mn)
     return ps and action in ps
-    # for r in [a.name for a in get_user_roles()]:
+    # for r in [a.name for a in get_roles()]:
     #     if r not in scope_map or not hasattr(user, r):
     #         continue
     #
@@ -206,7 +207,7 @@ def get_user_model_permissions(user, scope_map=USER_ROLE_MODEL_MAP):
     from xyz_restful.helper import get_model_actions
     res = {}
     mds = get_model_actions()
-    for r in [a.name for a in get_user_roles()]:
+    for r in [a.name for a in get_roles()]:
         if r not in scope_map or not hasattr(user, r):
             continue
         d = scope_map.get(r)
@@ -243,7 +244,7 @@ def find_user_ids_by_tag(tag):
         lookup_name = '%s__name__in' % field.name if field.is_relation else '%s__in' % field.name
         lookup[lookup_name] = lookup_values.split(',')
         qset = qset.filter(**lookup)
-    for role in get_user_roles():
+    for role in get_roles():
         rmodel = role.related_model
         if model == rmodel:
             return qset.values_list('user_id', flat=True)
@@ -269,3 +270,14 @@ def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
             mm = am.setdefault(model_name, {})
             mm[role_name] = setting.get('scope', {})
     return r
+
+def get_relation_limit(request, queryset):
+    gfk = modelutils.get_generic_foreign_key(queryset.model._meta)
+    if not gfk:
+        return
+    pms = request.query_params
+    ctid = pms.get(gfk.ct_field)
+    if not ctid:
+        return
+    ct = ContentType.objects.get_for_id(ctid)
+    return '%s.%s' % (ct.app_label, ct.model)

@@ -16,7 +16,7 @@ class UserViewSet(viewsets.GenericViewSet):
     def get_object(self):
         return self.request.user
 
-    @decorators.list_route(['post'], authentication_classes=[], permission_classes=[])
+    @decorators.action(['post'], detail=False, authentication_classes=[], permission_classes=[])
     def login(self, request, *args, **kwargs):
         serializer = serializers.LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -27,7 +27,7 @@ class UserViewSet(viewsets.GenericViewSet):
             return response.Response(data)
         return response.Response(serializer.errors, status=400)
 
-    @decorators.list_route(['get'], permission_classes=[permissions.IsAuthenticated])
+    @decorators.action(['get'], detail=False, permission_classes=[permissions.IsAuthenticated])
     def current(self, request):
         srs = signals.to_get_user_profile.send(sender=self, user=request.user, request=request)
         srs = [rs[1] for rs in srs if isinstance(rs[1], Serializer)]
@@ -38,7 +38,7 @@ class UserViewSet(viewsets.GenericViewSet):
             data[n] = rs.data
         return response.Response(data)
 
-    @decorators.list_route(['post'], permission_classes=[permissions.IsAuthenticated])
+    @decorators.action(['post'], detail=False, permission_classes=[permissions.IsAuthenticated])
     def change_password(self, request):
         serializer = serializers.PasswordChangeSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -46,18 +46,17 @@ class UserViewSet(viewsets.GenericViewSet):
             return response.Response({})
         return response.Response(serializer.errors, status=400)
 
-    @decorators.list_route(['post', 'get'], authentication_classes=[], permission_classes=[])
+    @decorators.action(['post', 'get'], detail=False, authentication_classes=[], permission_classes=[])
     def logout(self, request):
         from django.contrib.auth import logout
         logout(request)
         return response.Response('退出成功', status=status.HTTP_200_OK)
 
-    @decorators.list_route(['get'], permission_classes=[permissions.IsAuthenticated])
+    @decorators.action(['get'], detail=False, permission_classes=[permissions.IsAuthenticated])
     def stat(self, request):
         pms = request.query_params
         ms = pms.getlist('measures', ['all'])
         return response.Response(stats.stats_login(None, ms, pms.get('period', '近7天')))
-
 
 
 if USING_JWTA:

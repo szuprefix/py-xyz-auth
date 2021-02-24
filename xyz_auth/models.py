@@ -28,11 +28,11 @@ class Authority(models.Model):
         return rs
 
     def save(self, **kwargs):
-        from .helper import get_user_roles
+        from .helper import get_roles
         from django.contrib.contenttypes.models import ContentType
         user = self.user
         roles = {}
-        for rf in get_user_roles():
+        for rf in get_roles():
             r = getattr(user, rf.name,None)
             if not r:
                 continue
