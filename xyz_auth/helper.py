@@ -126,8 +126,8 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
             # print mn, mnl, fn, r
             if isinstance(mnl, (str, unicode)):
                 mnl = [mnl]
-            if relation_limit:
-                mnl = [mn for mn in mnl if mn == relation_limit]
+            if relation_limit and relation_limit in mnl:
+                mnl = [relation_limit]
             for mn2 in mnl:
                 lookup = "%s__in" % fn
                 if mn2 == 'auth.user':

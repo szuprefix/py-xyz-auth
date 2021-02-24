@@ -5,7 +5,7 @@ import sys
 
 setup(
     name="xyz-auth",
-    version="0.0.8",
+    version="0.0.9",
     author="szuprefix",
     author_email="szuprefix@126.com",
     description="auth common api",
