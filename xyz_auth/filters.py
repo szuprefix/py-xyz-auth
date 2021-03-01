@@ -25,6 +25,8 @@ class UserResourceFilter(BaseFilterBackend):
         return d
 
     def filter_queryset(self, request, queryset, view):
+        if 'pk' in view.kwargs:
+            return queryset
         from .helper import filter_query_set_for_user
         user = request.user
         rld = self.gen_relation_lookup_from_request(request)

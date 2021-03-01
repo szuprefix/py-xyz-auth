@@ -18,6 +18,7 @@ import logging
 
 log = logging.getLogger('django')
 
+
 #
 # def gen_permissions_map(permissions):
 #     m = {}
@@ -60,6 +61,7 @@ log = logging.getLogger('django')
 
 def get_roles():
     return [f for f in User._meta.get_fields() if isinstance(f, OneToOneRel) and f.name.startswith('as_')]
+
 
 #
 # def get_user_resources():
@@ -163,6 +165,7 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
     return qset.none()
 
 
+
 def user_has_model_permission(model, user, action):
     from django.db.models import QuerySet
     if isinstance(model, QuerySet):
@@ -259,17 +262,87 @@ def find_user_ids_by_tag(tag):
     return qset.values_list('user_id', flat=True)
 
 
-def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
+def get_all_app_models():
     r = {}
+    for app in apps.get_app_configs():
+        model_names = app.models.keys()
+        if not model_names:
+            continue
+        m = r[app.label] = {}
+        for model_name in model_names:
+            m[model_name] = dict(full={}, part={})
+    return r
+
+def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
+    r = get_all_app_models()
     for role_name, pm in scope_map.iteritems():
         for appmodel, setting in pm.iteritems():
             if appmodel == '@all':
+                for an, app in r.iteritems():
+                    for mn, model in app.iteritems():
+                        model['full'][role_name] = True
                 continue
             app_label, model_name = appmodel.split('.')
             am = r.setdefault(app_label, {})
             mm = am.setdefault(model_name, {})
-            mm[role_name] = setting.get('scope', {})
+            scope = setting.get('scope', {})
+            if scope == '@all':
+                mm['full'][role_name] = True
+            else:
+                mm['part'][role_name] = scope
     return r
+
+
+
+def model_in_user_scope(model, user, appmodel_scope_map=None):
+    asm = appmodel_scope_map
+    if not asm:
+        asm = gen_appmodel_scope_map()
+    an, mn=model._meta.app_label, model._meta.model_name
+    sm = asm[an][mn]
+    for role, scope in sm['full'].iteritems():
+        if scope and hasattr(user, role):
+            return True
+    for role, scope in sm['part'].iteritems():
+        if scope and hasattr(user, role):
+            for field_name, relations in scope.iteritems():
+                if isinstance(relations, (str, unicode)):
+                    relations=[relations]
+                field = model._meta.get_field(field_name)
+                if field.is_relation:
+                    if field.many_to_one or field.one_to_one:
+                        rel_model = getattr(model, field_name)
+                        if not rel_model:
+                            continue
+                        meta = rel_model._meta
+                        app_model = '%s.%s' % (meta.app_label, meta.model_name)
+
+                        if app_model == 'auth.user':
+                            if getattr(model, '%s_id' % field_name) == user.id:
+                                return True
+                        elif role in relations:
+                            if rel_model.id == getattr(user, role).id:
+                                return True
+                        elif app_model in relations:
+                            b = model_in_user_scope(rel_model, user, asm)
+                            if b:
+                                return True
+                    else:
+                        rel_qset = getattr(model, field_name)
+                        meta = rel_qset.model._meta
+                        app_model = '%s.%s' % (meta.app_label, meta.model_name)
+                        if app_model == 'auth.user':
+                            if rel_qset.filter(id= user.id).exists():
+                                return True
+                        if role in relations:
+                            if rel_qset.filter(id= getattr(user, role).id).exists():
+                                return True
+                        elif app_model in relations:
+                            b = filter_query_set_for_user(rel_qset, user).exists()
+                            if b:
+                                return True
+    return False
+
 
 def get_relation_limit(request, queryset):
     gfk = modelutils.get_generic_foreign_key(queryset.model._meta)
@@ -281,3 +354,4 @@ def get_relation_limit(request, queryset):
         return
     ct = ContentType.objects.get_for_id(ctid)
     return '%s.%s' % (ct.app_label, ct.model)
+
