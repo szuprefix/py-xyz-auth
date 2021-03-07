@@ -315,7 +315,7 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
                         if not rel_model:
                             continue
                         meta = rel_model._meta
-                        app_model = '%s.%s' % (meta.app_label, meta.model_name)
+                        app_model = meta.label_lower # '%s.%s' % (meta.app_label, meta.model_name)
 
                         if app_model == 'auth.user':
                             if getattr(model, '%s_id' % field_name) == user.id:
@@ -330,7 +330,7 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
                     else:
                         rel_qset = getattr(model, field_name)
                         meta = rel_qset.model._meta
-                        app_model = '%s.%s' % (meta.app_label, meta.model_name)
+                        app_model = meta.label_lower # '%s.%s' % (meta.app_label, meta.model_name)
                         if app_model == 'auth.user':
                             if rel_qset.filter(id= user.id).exists():
                                 return True
