@@ -69,7 +69,7 @@ def get_roles():
 #     roles = [(r.name, r.related_model._meta.verbose_name, r.related_model) for r in get_roles()]
 #     roles.append(('self', User._meta.verbose_name, User))
 #     res = {}
-#     for an, a in pm.iteritems():
+#     for an, a in pm.items():
 #         for m in a['models']:
 #             am = an + '.' + m['name']
 #             for rn, rvn, r in roles:
@@ -124,7 +124,7 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
         scope = d2.get('scope', {})
         if scope == '@all':
             return qset
-        for fn, mnl in scope.iteritems():
+        for fn, mnl in scope.items():
             # print mn, mnl, fn, r
             if isinstance(mnl, (str, unicode)):
                 mnl = [mnl]
@@ -196,7 +196,7 @@ def user_has_model_permission(model, user, action):
 
 def extract_actions(d, mds):
     res = {}
-    for mn, conf in d.iteritems():
+    for mn, conf in d.items():
         res.setdefault(mn, set())
         if '@all' in conf:
             res[mn] = mds[mn]
@@ -275,11 +275,11 @@ def get_all_app_models():
 
 def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
     r = get_all_app_models()
-    for role_name, pm in scope_map.iteritems():
-        for appmodel, setting in pm.iteritems():
+    for role_name, pm in scope_map.items():
+        for appmodel, setting in pm.items():
             if appmodel == '@all':
-                for an, app in r.iteritems():
-                    for mn, model in app.iteritems():
+                for an, app in r.items():
+                    for mn, model in app.items():
                         model['full'][role_name] = True
                 continue
             app_label, model_name = appmodel.split('.')
@@ -300,12 +300,12 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
         asm = gen_appmodel_scope_map()
     an, mn=model._meta.app_label, model._meta.model_name
     sm = asm[an][mn]
-    for role, scope in sm['full'].iteritems():
+    for role, scope in sm['full'].items():
         if scope and hasattr(user, role):
             return True
-    for role, scope in sm['part'].iteritems():
+    for role, scope in sm['part'].items():
         if scope and hasattr(user, role):
-            for field_name, relations in scope.iteritems():
+            for field_name, relations in scope.items():
                 if isinstance(relations, (str, unicode)):
                     relations=[relations]
                 field = model._meta.get_field(field_name)

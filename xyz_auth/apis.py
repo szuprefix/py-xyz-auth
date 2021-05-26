@@ -9,7 +9,7 @@ from rest_framework.serializers import Serializer
 from .authentications import USING_JWTA, add_token_for_user
 
 
-@register(base_name='user')
+@register(basename='user')
 class UserViewSet(viewsets.GenericViewSet):
     serializer_class = serializers.UserSerializer
 

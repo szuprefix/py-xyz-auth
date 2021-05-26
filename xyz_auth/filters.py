@@ -10,7 +10,7 @@ class UserResourceFilter(BaseFilterBackend):
     def gen_relation_lookup_from_request(self, request):
         pms = request.query_params
         d = {}
-        for k, v in pms.iteritems():
+        for k, v in pms.items():
             ps = k.split('.')
             if len(ps) != 3:
                 continue

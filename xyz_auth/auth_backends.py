@@ -12,7 +12,7 @@ class TempTokenBackend(ModelBackend):
         signer = TimestampSigner(salt=username)
         try:
             uid = signer.unsign(password, max_age=300)
-        except Exception, e:
+        except Exception as e:
             return
         from django.contrib.auth import models
         user = models.User.objects.filter(username=username, id=uid).first()
