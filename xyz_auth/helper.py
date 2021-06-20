@@ -12,7 +12,7 @@ from django.db.models import OneToOneField
 from django.db.models import OneToOneRel
 from xyz_restful.helper import router
 from django.contrib.contenttypes.models import ContentType
-
+from six import string_types
 from django.conf import settings
 import logging
 
@@ -94,7 +94,7 @@ USER_ROLE_MODEL_MAP = getattr(settings, 'USER_ROLE_MODEL_MAP', {})
 def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relation_lookups={}, relation_limit=None):
     from django.contrib.contenttypes.fields import GenericForeignKey
     from django.contrib.contenttypes.models import ContentType
-    if isinstance(qset, (str, unicode)):
+    if isinstance(qset, string_types):
         qset = apps.get_model(qset)
     if type(qset) == ModelBase:
         qset = qset.objects.all()
@@ -126,7 +126,7 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
             return qset
         for fn, mnl in scope.items():
             # print mn, mnl, fn, r
-            if isinstance(mnl, (str, unicode)):
+            if isinstance(mnl, string_types):
                 mnl = [mnl]
             if relation_limit and relation_limit in mnl:
                 mnl = [relation_limit]
@@ -306,7 +306,7 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
     for role, scope in sm['part'].items():
         if scope and hasattr(user, role):
             for field_name, relations in scope.items():
-                if isinstance(relations, (str, unicode)):
+                if isinstance(relations, string_types):
                     relations=[relations]
                 field = model._meta.get_field(field_name)
                 if field.is_relation:
