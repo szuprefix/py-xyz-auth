@@ -7,7 +7,7 @@ class TempTokenBackend(ModelBackend):
     Custom auth backend that uses an worker mobile and password
     """
 
-    def authenticate(self, username, password):
+    def authenticate(self, request, username, password):
         from django.core.signing import TimestampSigner
         signer = TimestampSigner(salt=username)
         try:
