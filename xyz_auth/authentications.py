@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from rest_framework.authentication import SessionAuthentication as OrgSessionAuthentication
-
+from six import text_type
 __author__ = 'denishuang'
 
 from rest_framework.settings import api_settings
@@ -18,4 +18,4 @@ def add_token_for_user(d, user):
     if USING_JWTA:
         from rest_framework_simplejwt.tokens import RefreshToken
         refresh = RefreshToken.for_user(user)
-        d['token'] = {'refresh': str(refresh), 'access': str(refresh.access_token)}
+        d['token'] = {'refresh': text_type(refresh), 'access': text_type(refresh.access_token)}
