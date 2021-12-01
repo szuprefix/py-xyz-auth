@@ -62,6 +62,12 @@ log = logging.getLogger('django')
 def get_roles():
     return [f for f in User._meta.get_fields() if isinstance(f, OneToOneRel) and f.name.startswith('as_')]
 
+def get_user_role_names(user):
+    ns = [r.name for r in get_roles() if hasattr(user, r.name)]
+    from .signals import to_get_user_roles
+    for f, rns in to_get_user_roles.send(sender=get_user_role_names, user=user):
+        ns.extend(rns)
+    return ns
 
 #
 # def get_user_resources():
@@ -90,8 +96,17 @@ def get_roles():
 
 USER_ROLE_MODEL_MAP = getattr(settings, 'USER_ROLE_MODEL_MAP', {})
 
+def get_role_model_map():
+    from .signals import to_get_role_model_map
+    d = {}
+    d.update(USER_ROLE_MODEL_MAP)
+    for r, scm in to_get_role_model_map.send(sender=get_role_model_map):
+        d.update(scm)
+    return d
 
-def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relation_lookups={}, relation_limit=None):
+def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, relation_limit=None):
+    if not scope_map:
+        scope_map = get_role_model_map()
     from django.contrib.contenttypes.fields import GenericForeignKey
     from django.contrib.contenttypes.models import ContentType
     if isinstance(qset, string_types):
@@ -105,12 +120,12 @@ def filter_query_set_for_user(qset, user, scope_map=USER_ROLE_MODEL_MAP, relatio
     if rld:
         qset = qset.filter(**rld)
     lookup_link = None
-    for r in [r.name for r in get_roles()]:
-        if r not in scope_map or not hasattr(user, r):
+    for r in get_user_role_names(user):
+        if r not in scope_map:
             continue
 
-        role = getattr(user, r)
-        if hasattr(role, 'is_active') and role.is_active == False:
+        role = getattr(user, r, None)
+        if role and hasattr(role, 'is_active') and role.is_active == False:
             raise PermissionDenied('当前%s帐号已被禁用' % role._meta.verbose_name)
 
         d = scope_map.get(r)
