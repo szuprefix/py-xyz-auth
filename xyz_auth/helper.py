@@ -310,16 +310,17 @@ def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
 
 
 def model_in_user_scope(model, user, appmodel_scope_map=None):
+    role_names = get_user_role_names(user)
     asm = appmodel_scope_map
     if not asm:
-        asm = gen_appmodel_scope_map()
+        asm = gen_appmodel_scope_map(get_role_model_map())
     an, mn=model._meta.app_label, model._meta.model_name
     sm = asm[an][mn]
     for role, scope in sm['full'].items():
-        if scope and hasattr(user, role):
+        if scope and role in role_names: #hasattr(user, role):
             return True
     for role, scope in sm['part'].items():
-        if scope and hasattr(user, role):
+        if scope and role in role_names: #hasattr(user, role):
             for field_name, relations in scope.items():
                 if isinstance(relations, string_types):
                     relations=[relations]
