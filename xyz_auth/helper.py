@@ -168,6 +168,8 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
                         ids = list(pqset.values_list(mrfn, flat=True))
                         lkd = {lookup: ids}
                 lookup_link = Q(**lkd) if lookup_link is None else lookup_link | Q(**lkd)
+        if "filter" in d2:
+            lookup_link = Q(**d2['filter']) if lookup_link is None else lookup_link & Q(**d2['filter'])
     if lookup_link:
         qset = qset.filter(lookup_link)
         try:
