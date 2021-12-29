@@ -8,10 +8,9 @@ from django.db.models import Q
 from django.db.models.base import ModelBase
 from django.contrib.auth.models import User
 from django.utils import translation
-from django.db.models import OneToOneField
 from django.db.models import OneToOneRel
-from xyz_restful.helper import router
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey
 from six import string_types
 from django.conf import settings
 import logging
@@ -104,11 +103,14 @@ def get_role_model_map():
         d.update(scm)
     return d
 
-def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, relation_limit=None):
+def reduce_conds(conds, method=Q.__or__):
+    if conds:
+        return reduce(method, conds)
+    return None
+
+def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, relation_limit=None, role_name=None):
     if not scope_map:
         scope_map = get_role_model_map()
-    from django.contrib.contenttypes.fields import GenericForeignKey
-    from django.contrib.contenttypes.models import ContentType
     if isinstance(qset, string_types):
         qset = apps.get_model(qset)
     if type(qset) == ModelBase:
@@ -119,8 +121,11 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
     # print rld, relation_lookups
     if rld:
         qset = qset.filter(**rld)
-    lookup_link = None
-    for r in get_user_role_names(user):
+    role_conds = []
+    role_names = get_user_role_names(user)
+    if role_name and role_name in role_names:
+        role_names = [role_name]
+    for r in role_names:
         if r not in scope_map:
             continue
 
@@ -131,57 +136,88 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
         d = scope_map.get(r)
         if '@all' in d:
             return qset
+        # print 'role name:', r, mn, mn in d
         if mn not in d:
             continue
         d2 = d.get(mn)
+        # print d2
         if '@all' in d2:
             return qset
         scope = d2.get('scope', {})
         if scope == '@all':
             return qset
+
+        conds = []
         for fn, mnl in scope.items():
             # print mn, mnl, fn, r
+            field = m._meta.get_field(fn)
             if isinstance(mnl, string_types):
                 mnl = [mnl]
             if relation_limit and relation_limit in mnl:
                 mnl = [relation_limit]
             for mn2 in mnl:
-                lookup = "%s__in" % fn
-                if mn2 == 'auth.user':
-                    lkd = {lookup: [user.id]}
-                elif mn2 == r:
-                    lkd = {lookup: [role.id]}
-                else:
-                    m2 = apps.get_model(mn2)
-                    field = m._meta.get_field(fn)
-                    pqset = filter_query_set_for_user(mn2, user, scope_map=scope_map, relation_lookups=relation_lookups)
-                    # print field, ids
-                    if isinstance(field, GenericForeignKey):
-                        lookup = "%s__in" % field.fk_field
-                        ids = list(pqset.values_list('id', flat=True))
-                        lkd = {field.ct_field: ContentType.objects.get_for_model(m2), lookup: ids}
-                    else:
-                        mrfn = 'id'
-                        if field.related_model != m2:
-                            f = modelutils.get_model_related_field(m2, field.related_model)
-                            mrfn = f.name
-                        ids = list(pqset.values_list(mrfn, flat=True))
-                        lkd = {lookup: ids}
-                lookup_link = Q(**lkd) if lookup_link is None else lookup_link | Q(**lkd)
+                # lookup = "%s__in" % fn
+                # if mn2 == 'auth.user':
+                #     lkd = {lookup: [user.id]}
+                # elif mn2 == r:
+                #     lkd = {lookup: [role.id]}
+                # else:
+                #     m2 = apps.get_model(mn2)
+                #     # print field
+                #     pqset = filter_query_set_for_user(mn2, user, scope_map=scope_map, relation_lookups=relation_lookups)
+                #     if isinstance(field, GenericForeignKey):
+                #         lookup = "%s__in" % field.fk_field
+                #         ids = list(pqset.values_list('id', flat=True))
+                #         lkd = {field.ct_field: ContentType.objects.get_for_model(m2), lookup: ids}
+                #     else:
+                #         mrfn = 'id'
+                #         if field.related_model != m2:
+                #             f = modelutils.get_model_related_field(m2, field.related_model)
+                #             mrfn = f.name
+                #         ids = list(pqset.values_list(mrfn, flat=True))
+                #         lkd = {lookup: ids}
+                cond = get_filter_cond_for_user_role(user, r, field, mn2, scope_map=scope_map, relation_lookups=relation_lookups)
+                conds.append(cond)
+        conds = reduce_conds(conds) if conds else None
         if "filter" in d2:
-            lookup_link = Q(**d2['filter']) if lookup_link is None else lookup_link & Q(**d2['filter'])
-    if lookup_link:
-        qset = qset.filter(lookup_link)
+            cond = Q(**d2['filter'])
+            conds = cond if conds is None else conds & cond
+        if conds:
+            role_conds.append(conds)
+    # print 'role_conds',mn, role_conds
+    if role_conds:
+        qset = qset.filter(reduce_conds(role_conds))
         try:
             if [f for f in m._meta.fields if f.name == 'is_active']:
                 qset = qset.filter(is_active=True)
         except:
             import traceback
-            log.error('filter_query_set_for_user %s:%s error. %s', mn, lookup_link, traceback.format_exc())
+            log.error('filter_query_set_for_user %s:%s error. %s', mn, role_conds, traceback.format_exc())
         return qset.distinct()
     return qset.none()
 
 
+def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
+    lookup = "%s__in" % field.name
+    if model_name == 'auth.user':
+        lkd = {lookup: [user.id]}
+    elif model_name == role_name:
+        lkd = {lookup: [getattr(user, role_name).id]}
+    else:
+        model = apps.get_model(model_name)
+        pqset = filter_query_set_for_user(model_name, user, **kwargs)
+        if isinstance(field, GenericForeignKey):
+            lookup = "%s__in" % field.fk_field
+            ids = list(pqset.values_list('id', flat=True))
+            lkd = {field.ct_field: ContentType.objects.get_for_model(model), lookup: ids}
+        else:
+            mrfn = 'id'
+            if field.related_model != model:
+                f = modelutils.get_model_related_field(model, field.related_model)
+                mrfn = f.name
+            ids = list(pqset.values_list(mrfn, flat=True))
+            lkd = {lookup: ids}
+    return Q(**lkd)
 
 def user_has_model_permission(model, user, action):
     from django.db.models import QuerySet

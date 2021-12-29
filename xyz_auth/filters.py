@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from rest_framework.filters import BaseFilterBackend
 from django.apps.registry import apps
 
+
 class UserResourceFilter(BaseFilterBackend):
 
     def gen_relation_lookup_from_request(self, request):
@@ -32,7 +33,13 @@ class UserResourceFilter(BaseFilterBackend):
         rld = self.gen_relation_lookup_from_request(request)
         from .helper import get_relation_limit
         relation_limit = get_relation_limit(request, queryset)
-        qset = filter_query_set_for_user(queryset, user, relation_lookups=rld, relation_limit=relation_limit)
+        qset = filter_query_set_for_user(
+            queryset,
+            user,
+            relation_lookups=rld,
+            relation_limit=relation_limit,
+            role_name=request.query_params.get('role_name_for_filter')
+        )
         # if mn:
         #     model = apps.get_model(mn)
         #     from xyz_util.modelutils import get_generic_foreign_key, distinct

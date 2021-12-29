@@ -5,7 +5,7 @@ from rest_framework import viewsets, decorators, response, status, permissions
 from xyz_restful.helper import register_urlpatterns
 from xyz_restful.decorators import register
 from django.contrib.auth import login as auth_login
-from rest_framework.serializers import Serializer
+from rest_framework.serializers import Serializer, ListSerializer
 from .authentications import USING_JWTA, add_token_for_user
 
 
@@ -30,12 +30,13 @@ class UserViewSet(viewsets.GenericViewSet):
     @decorators.action(['get'], detail=False, permission_classes=[permissions.IsAuthenticated])
     def current(self, request):
         srs = signals.to_get_user_profile.send(sender=self, user=request.user, request=request)
-        srs = [rs[1] for rs in srs if isinstance(rs[1], Serializer)]
+        srs = [rs[1] for rs in srs]
         data = self.get_serializer(request.user, context={'request': request}).data
         for rs in srs:
-            opt = rs.Meta.model._meta
-            n = "as_%s_%s" % (opt.app_label, opt.model_name)
-            data[n] = rs.data
+            if isinstance(rs, (Serializer, ListSerializer)):
+                opt = rs.child.Meta.model._meta if hasattr(rs, 'child') else rs.Meta.model._meta
+                n = "as_%s_%s" % (opt.app_label, opt.model_name)
+                data[n] = rs.data
         return response.Response(data)
 
     @decorators.action(['post'], detail=False, permission_classes=[permissions.IsAuthenticated])
