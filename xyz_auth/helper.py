@@ -184,7 +184,8 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
                 #         lkd = {lookup: ids}
                 cond = get_filter_cond_for_user_role(user, r, field, mn2, scope_map=scope_map,
                                                      relation_lookups=relation_lookups)
-                conds.append(cond)
+                if cond:
+                    conds.append(cond)
         conds = reduce_conds(conds) if conds else None
         if "filter" in d2:
             cond = Q(**d2['filter'])
@@ -216,6 +217,8 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
         if isinstance(field, GenericForeignKey):
             lookup = "%s__in" % field.fk_field
             ids = list(pqset.values_list('id', flat=True))
+            if not ids:
+                return
             lkd = {field.ct_field: ContentType.objects.get_for_model(model), lookup: ids}
         else:
             mrfn = 'id'
@@ -223,6 +226,8 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
                 f = modelutils.get_model_related_field(model, field.related_model)
                 mrfn = f.name
             ids = list(pqset.values_list(mrfn, flat=True))
+            if not ids:
+                return
             lkd = {lookup: ids}
     return Q(**lkd)
 
