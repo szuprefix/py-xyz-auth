@@ -155,35 +155,15 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
 
         conds = []
         for fn, mnl in scope.items():
-            # print mn, mnl, fn, r
             field = m._meta.get_field(fn)
             if isinstance(mnl, string_types):
                 mnl = [mnl]
             if relation_limit and relation_limit in mnl:
                 mnl = [relation_limit]
             for mn2 in mnl:
-                # lookup = "%s__in" % fn
-                # if mn2 == 'auth.user':
-                #     lkd = {lookup: [user.id]}
-                # elif mn2 == r:
-                #     lkd = {lookup: [role.id]}
-                # else:
-                #     m2 = apps.get_model(mn2)
-                #     # print field
-                #     pqset = filter_query_set_for_user(mn2, user, scope_map=scope_map, relation_lookups=relation_lookups)
-                #     if isinstance(field, GenericForeignKey):
-                #         lookup = "%s__in" % field.fk_field
-                #         ids = list(pqset.values_list('id', flat=True))
-                #         lkd = {field.ct_field: ContentType.objects.get_for_model(m2), lookup: ids}
-                #     else:
-                #         mrfn = 'id'
-                #         if field.related_model != m2:
-                #             f = modelutils.get_model_related_field(m2, field.related_model)
-                #             mrfn = f.name
-                #         ids = list(pqset.values_list(mrfn, flat=True))
-                #         lkd = {lookup: ids}
-                cond = get_filter_cond_for_user_role(user, r, field, mn2, scope_map=scope_map,
-                                                     relation_lookups=relation_lookups)
+                cond = get_filter_cond_for_user_role(
+                    user, r, field, mn2, scope_map=scope_map, relation_lookups=relation_lookups
+                )
                 if cond:
                     conds.append(cond)
         conds = reduce_conds(conds) if conds else None
@@ -206,30 +186,42 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
 
 
 def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
-    lookup = "%s__in" % field.name
+    # lookup = "%s__in" % field.name
     if model_name == 'auth.user':
-        lkd = {lookup: [user.id]}
-    elif model_name == role_name:
-        lkd = {lookup: [getattr(user, role_name).id]}
+        return Q(**{field.name: user.id})
+    if model_name == role_name:
+        role = getattr(user, role_name)
+        return Q(**{field.name: role.id})
+        # rmname = role._meta.label_lower
+        # if rmname == field.model._meta.label_lower:
+        #     return Q(**{'id': role.id})
+        # model_name =
+    model = apps.get_model(model_name)
+    pqset = filter_query_set_for_user(model_name, user, **kwargs)
+    if isinstance(field, GenericForeignKey):
+        lookup = "%s__in" % field.fk_field
+        ids = list(pqset.values_list('id', flat=True))
+        if not ids:
+            return
+        return Q(**{field.ct_field: ContentType.objects.get_for_model(model), lookup: ids})
+
+    mrfn = 'id'
+    f = field
+    if f.related_model != model:
+        f = modelutils.get_model_related_field(model, field.related_model)
+        mrfn = f.name
+    ids = list(pqset.values_list(mrfn, flat=True))
+    if not ids:
+        return
+    # lkd = {lookup: ids}
+    if field.one_to_many:
+        return Q(**{'%s__in' % (f.related_query_name or f.related_name): ids})
     else:
-        model = apps.get_model(model_name)
-        pqset = filter_query_set_for_user(model_name, user, **kwargs)
-        if isinstance(field, GenericForeignKey):
-            lookup = "%s__in" % field.fk_field
-            ids = list(pqset.values_list('id', flat=True))
-            if not ids:
-                return
-            lkd = {field.ct_field: ContentType.objects.get_for_model(model), lookup: ids}
-        else:
-            mrfn = 'id'
-            if field.related_model != model:
-                f = modelutils.get_model_related_field(model, field.related_model)
-                mrfn = f.name
-            ids = list(pqset.values_list(mrfn, flat=True))
-            if not ids:
-                return
-            lkd = {lookup: ids}
-    return Q(**lkd)
+        # print(field.model, field.related_model)
+        f = modelutils.get_model_related_field(f.through, f.related_model)
+        lookup = {"%s__in" % f.name: ids}
+        mids = field.through.objects.filter(**lookup).values_list('%s_id' % field.model._meta.model_name, flat=True)
+        return Q(**{'id__in': list(mids)})
 
 
 def user_has_model_permission(model, user, action):
