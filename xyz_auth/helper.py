@@ -204,7 +204,6 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
         if not ids:
             return
         return Q(**{field.ct_field: ContentType.objects.get_for_model(model), lookup: ids})
-
     mrfn = 'id'
     f = field
     if f.related_model != model:
@@ -218,12 +217,12 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
         return Q(**{'%s__in' % field.related_model._meta.model_name: ids})
     if field.one_to_many:
         return Q(**{'%s__in' % (f.related_query_name or f.related_name): ids})
-    else:
-        # print(field.model, field.related_model)
-        f = modelutils.get_model_related_field(f.through, f.related_model)
-        lookup = {"%s__in" % f.name: ids}
-        mids = field.through.objects.filter(**lookup).values_list('%s_id' % field.model._meta.model_name, flat=True)
-        return Q(**{'id__in': list(mids)})
+    if field.many_to_one:
+        return Q(**{'%s__in' % f.name: ids})
+    f = modelutils.get_model_related_field(f.through, f.related_model)
+    lookup = {"%s__in" % f.name: ids}
+    mids = field.through.objects.filter(**lookup).values_list('%s_id' % field.model._meta.model_name, flat=True)
+    return Q(**{'id__in': list(mids)})
 
 
 def user_has_model_permission(model, user, action):
