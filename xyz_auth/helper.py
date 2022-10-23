@@ -214,6 +214,8 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
     if not ids:
         return
     # lkd = {lookup: ids}
+    if field.one_to_one:
+        return Q(**{'%s__in' % field.related_model._meta.model_name: ids})
     if field.one_to_many:
         return Q(**{'%s__in' % (f.related_query_name or f.related_name): ids})
     else:
