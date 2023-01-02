@@ -5,7 +5,7 @@ __author__ = 'denishuang'
 
 from rest_framework.settings import api_settings
 
-DACS = api_settings.user_settings.get('DEFAULT_AUTHENTICATION_CLASSES')
+DACS = api_settings.user_settings.get('DEFAULT_AUTHENTICATION_CLASSES', [])
 USING_JWTA = 'rest_framework_simplejwt.authentication.JWTAuthentication' in DACS
 
 
