@@ -162,7 +162,9 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
                 mnl = [relation_limit]
             for mn2 in mnl:
                 cond = get_filter_cond_for_user_role(
-                    user, r, field, mn2, scope_map=scope_map, relation_lookups=relation_lookups
+                    user, r, field, mn2,
+                    scope_map=scope_map,
+                    relation_lookups=relation_lookups
                 )
                 if cond:
                     conds.append(cond)
@@ -197,7 +199,7 @@ def get_filter_cond_for_user_role(user, role_name, field, model_name, **kwargs):
         #     return Q(**{'id': role.id})
         # model_name =
     model = apps.get_model(model_name)
-    pqset = filter_query_set_for_user(model_name, user, **kwargs)
+    pqset = filter_query_set_for_user(model_name, user, role_name=role_name, **kwargs)
     if isinstance(field, GenericForeignKey):
         lookup = "%s__in" % field.fk_field
         ids = list(pqset.values_list('id', flat=True))

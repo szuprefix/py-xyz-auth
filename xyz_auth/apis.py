@@ -33,10 +33,13 @@ class UserViewSet(viewsets.GenericViewSet):
         srs = [rs[1] for rs in srs]
         data = self.get_serializer(request.user, context={'request': request}).data
         for rs in srs:
-            if isinstance(rs, (Serializer, ListSerializer)):
-                opt = rs.child.Meta.model._meta if hasattr(rs, 'child') else rs.Meta.model._meta
-                n = "as_%s_%s" % (opt.app_label, opt.model_name)
-                data[n] = rs.data
+            if not isinstance(rs, (list, tuple)):
+                rs = [rs]
+            for s in rs:
+                if isinstance(s, (Serializer, ListSerializer)):
+                    opt = s.child.Meta.model._meta if hasattr(s, 'child') else s.Meta.model._meta
+                    n = "as_%s_%s" % (opt.app_label, opt.model_name)
+                    data[n] = s.data
         return response.Response(data)
 
     @decorators.action(['post'], detail=False, permission_classes=[permissions.IsAuthenticated])
