@@ -277,7 +277,10 @@ def get_user_model_permissions(user, scope_map=USER_ROLE_MODEL_MAP):
         d = scope_map.get(r)
         if '@all' in d:
             return mds
-        res.update(extract_actions(d, mds))
+        for k, v in extract_actions(d, mds).items():
+            if v:
+                v.update(res.get(k, set()))
+                res[k] = v
     return res
 
 
