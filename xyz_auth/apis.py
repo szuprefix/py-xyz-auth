@@ -4,7 +4,7 @@ from . import serializers, signals, stats
 from rest_framework import viewsets, decorators, response, status, permissions
 from xyz_restful.helper import register_urlpatterns
 from xyz_restful.decorators import register
-from django.contrib.auth import login as auth_login
+from django.contrib.auth import login as auth_login, models
 from rest_framework.serializers import Serializer, ListSerializer
 from .authentications import USING_JWTA, add_token_for_user
 
@@ -12,6 +12,7 @@ from .authentications import USING_JWTA, add_token_for_user
 @register(basename='user')
 class UserViewSet(viewsets.GenericViewSet):
     serializer_class = serializers.UserSerializer
+    queryset = models.User.objects.none()
 
     def get_object(self):
         return self.request.user
@@ -61,6 +62,16 @@ class UserViewSet(viewsets.GenericViewSet):
         pms = request.query_params
         ms = pms.getlist('measures', ['all'])
         return response.Response(stats.stats_login(None, ms, pms.get('period', '近7天')))
+
+    @decorators.action(['patch'], detail=False)
+    def change_user_name(self, request):
+        ds = request.data
+        uid = ds['user_id']
+        name = ds['name']
+        from .helper import change_user_names
+        rns = change_user_names(uid, name)
+        return response.Response(dict(detail='ok', roles=rns))
+
 
 
 if USING_JWTA:

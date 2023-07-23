@@ -12,9 +12,11 @@ from django.utils import translation
 from django.db.models import OneToOneRel
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-from six import string_types
+from six import string_types, text_type
 from django.conf import settings
 import logging
+
+from xyz_util.datautils import import_function
 
 log = logging.getLogger('django')
 
@@ -170,7 +172,10 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
                     conds.append(cond)
         conds = reduce_conds(conds) if conds else None
         if "filter" in d2:
-            cond = Q(**d2['filter'])
+            filter=d2['filter']
+            if isinstance(filter, text_type):
+                filter = import_function(filter)
+            cond = Q(**filter)
             conds = cond if conds is None else conds & cond
         if conds:
             role_conds.append(conds)
@@ -408,6 +413,18 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
                                 return True
     return False
 
+def change_user_names(uid, name):
+    u = User.objects.get(id=uid)
+    u.first_name = name
+    u.last_name = ''
+    u.save()
+    rns = get_user_role_names(u)
+    for r in rns:
+        a = getattr(u, r)
+        if hasattr(a, 'name'):
+            a.name = name
+            a.save()
+    return rns
 
 def get_relation_limit(request, queryset):
     gfk = modelutils.get_generic_foreign_key(queryset.model._meta)
