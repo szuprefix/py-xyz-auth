@@ -172,7 +172,7 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
                     conds.append(cond)
         conds = reduce_conds(conds) if conds else None
         if "filter" in d2:
-            filter=d2['filter']
+            filter = d2['filter']
             if isinstance(filter, text_type):
                 filter = import_function(filter)
             cond = Q(**filter)
@@ -354,7 +354,7 @@ def gen_appmodel_scope_map(scope_map=USER_ROLE_MODEL_MAP):
                 continue
             app_label, model_name = appmodel.split('.')
             am = r.setdefault(app_label, {})
-            mm = am.setdefault(model_name, {})
+            mm = am.setdefault(model_name, dict(full={}, part={}))
             scope = setting.get('scope', {})
             if scope == '@all':
                 mm['full'][role_name] = True
@@ -413,18 +413,23 @@ def model_in_user_scope(model, user, appmodel_scope_map=None):
                                 return True
     return False
 
-def change_user_names(uid, name):
-    u = User.objects.get(id=uid)
-    u.first_name = name
-    u.last_name = ''
-    u.save()
-    rns = get_user_role_names(u)
+
+def change_user_names(user, name):
+    if isinstance(user, int):
+        user = User.objects.get(id=user)
+    elif isinstance(user, text_type):
+        user = User.objects.get(username=user)
+    user.first_name = name
+    user.last_name = ''
+    user.save()
+    rns = get_user_role_names(user)
     for r in rns:
-        a = getattr(u, r)
+        a = getattr(user, r)
         if hasattr(a, 'name'):
             a.name = name
             a.save()
     return rns
+
 
 def get_relation_limit(request, queryset):
     gfk = modelutils.get_generic_foreign_key(queryset.model._meta)
