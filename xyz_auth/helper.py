@@ -424,7 +424,9 @@ def change_user_names(user, name):
     user.save()
     rns = get_user_role_names(user)
     for r in rns:
-        a = getattr(user, r)
+        a = getattr(user, r, None)
+        if not a:
+            continue
         if hasattr(a, 'name'):
             a.name = name
             a.save()
