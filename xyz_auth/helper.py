@@ -60,6 +60,9 @@ log = logging.getLogger('django')
 #         if isinstance(f, OneToOneField) and f.related_model == User:
 #             return getattr(role_obj, f.name)
 
+def get_user_names_by_ids(ids, unknown='None'):
+    qset = User.objects.filter(id__in=ids)
+    return dict([(a, f"{c}{' '+b if b else ''}" or unknown) for a,b,c in qset.values_list('id', 'last_name', 'first_name')])
 
 def get_roles():
     return [f for f in User._meta.get_fields() if isinstance(f, OneToOneRel) and f.name.startswith('as_')]
@@ -126,12 +129,14 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
     m = qset.model
     mn = m._meta.label_lower
     rld = relation_lookups.get(mn)
-    # print rld, relation_lookups
+    # print(mn, rld, relation_lookups)
     if rld:
         qset = qset.filter(**rld)
     role_conds = []
     role_names = get_user_role_names(user)
-    if role_name and role_name in role_names:
+    if role_name:
+        if role_name not in role_names:
+            raise PermissionDenied('用户没有%s角色' % role_name)
         role_names = [role_name]
     for r in role_names:
         if r not in scope_map:
@@ -179,9 +184,11 @@ def filter_query_set_for_user(qset, user, scope_map=None, relation_lookups={}, r
             conds = cond if conds is None else conds & cond
         if conds:
             role_conds.append(conds)
-    # print 'role_conds',mn, role_conds
+    #print('role_conds',mn, role_conds)
     if role_conds:
-        qset = qset.filter(reduce_conds(role_conds))
+        fcond =reduce_conds(role_conds)
+        #print('fcond',fcond)
+        qset = qset.filter(fcond)
         try:
             if [f for f in m._meta.fields if f.name == 'is_active']:
                 qset = qset.filter(is_active=True)
