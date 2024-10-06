@@ -5,7 +5,7 @@ import sys
 
 setup(
     name="xyz-auth",
-    version="0.1.17",
+    version="0.2.0",
     author="szuprefix",
     author_email="szuprefix@126.com",
     description="auth common api",
@@ -15,7 +15,6 @@ setup(
     packages=find_packages(exclude=['tests.*', 'tests', 'testproject', 'example.*', 'example']),
     include_package_data=True,
     install_requires=[
-        'django>=1.11.2'
     ],
     classifiers=[
         "Environment :: Web Environment",
