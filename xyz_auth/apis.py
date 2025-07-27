@@ -76,10 +76,10 @@ class UserViewSet(viewsets.GenericViewSet):
 
 if USING_JWTA:
     from rest_framework_simplejwt.views import token_obtain_pair, token_refresh
-    from django.conf.urls import url
+    from django.urls import re_path
 
     urlpatterns = [
-        url(r'^token/$', token_obtain_pair, name='token_obtain_pair'),
-        url(r'^token/refresh/$', token_refresh, name='token_refresh')
+        re_path(r'^token/$', token_obtain_pair, name='token_obtain_pair'),
+        re_path(r'^token/refresh/$', token_refresh, name='token_refresh')
     ]
     register_urlpatterns('auth', urlpatterns)

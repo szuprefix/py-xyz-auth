@@ -7,12 +7,15 @@ __author__ = 'denishuang'
 
 class RoleResPermissions(DjangoModelPermissions):
     def has_permission(self, request, view):
-        if super(RoleResPermissions, self).has_permission(request, view):
+        rs = super(RoleResPermissions, self).has_permission(request, view)
+        if rs:
             return True
-        if view.action == 'metadata':
+        if getattr(view, 'action', None) == 'metadata':
             return True
-        from .helper import user_has_model_permission
-        return user_has_model_permission(self._queryset(view), request.user, view.action)
+        if hasattr(view, 'get_queryset'):
+            from .helper import user_has_model_permission
+            return user_has_model_permission(self._queryset(view), request.user, view.action)
+        return rs
 
     def has_object_permission(self, request, view, obj):
         from .helper import model_in_user_scope
