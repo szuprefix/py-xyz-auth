@@ -244,7 +244,7 @@ def user_has_model_permission(model, user, action):
     if isinstance(model, QuerySet):
         model = model.model
     meta = model._meta
-    mn = hasattr(model, 'alias') and meta.app_label + '.' + model.alias.lower() or meta.label_lower
+    mn = meta.label_lower # hasattr(model, 'alias') and meta.app_label + '.' + model.alias.lower() or
     from . import get_user_model_permissions
     ump = get_user_model_permissions(user)
     if not ump:
